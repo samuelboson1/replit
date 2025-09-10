@@ -1,0 +1,48 @@
+Prompt para Criação de Aplicativo de Governança Hoteleira no Replit
+1. Visão Geral do Projeto
+Crie um aplicativo web de página única para gerenciar o processo de limpeza e manutenção de um hotel. O aplicativo deve ser simples, intuitivo e com uma interface otimizada para dispositivos móveis, permitindo que a equipe de governança e as camareiras trabalhem de forma eficiente e em tempo real.
+
+O projeto deve ser construído em um único arquivo HTML que inclua HTML, CSS (utilizando classes do Tailwind CSS) e JavaScript. O armazenamento de dados deve ser feito em um banco de dados em tempo real, como o Firebase Firestore, para sincronizar as informações entre todos os usuários (gerentes e camareiras).
+
+2. Funcionalidades Principais
+a. Painel Simplificado
+O aplicativo deve ter um painel principal que exibe uma visão geral dos quartos do hotel, com cada quarto sendo representado por um "card". O status do quarto deve ser visualmente claro, talvez usando um esquema de cores:
+
+Vermelho: Sujo
+
+Amarelo: Em Limpeza
+
+Laranja: Para Inspeção
+
+Verde: Limpo
+
+Cinza: Ocupado
+
+b. Atribuição de Quartos para Camareiras
+O sistema deve simular a atribuição de quartos. Quando um usuário com o papel de "Gerente" visualiza o painel, ele deve ver todos os quartos e poder atribuir quartos a camareiras específicas. Quando um usuário com o papel de "Camareira" faz login, ele deve ver apenas os quartos que foram atribuídos a ele. Para o protótipo, a atribuição pode ser um valor fixo no banco de dados.
+
+c. Controle de Tempo de Limpeza
+No painel da camareira, cada card de quarto deve ter botões de ação: "Iniciar Limpeza", "Pausar" e "Concluir". O aplicativo deve registrar o tempo total de limpeza de um quarto, calculando a diferença entre o início e o fim do processo. Este tempo deve ser armazenado no Firestore.
+
+d. Cadastro de Avarias e Discrepâncias
+Dentro de cada card de quarto, deve haver um botão para "Reportar Problema". Ao clicar, um modal deve ser exibido com um campo de texto para que a camareira descreva o problema (ex: lâmpada queimada, vazamento no chuveiro, etc.). Ao enviar, o status do quarto deve ser atualizado para "Para Inspeção" e a avaria deve ser registrada no Firestore. A equipe de gerência deve poder visualizar essa avaria.
+
+e. Controle de Amenities e Enxoval
+Em cada quarto, deve haver um botão de "Checklist" que abre um modal com uma lista de itens (ex: amenities, toalhas, lençóis, etc.). A camareira deve poder marcar os itens como "verificados". Esta informação deve ser atualizada em tempo real para o banco de dados.
+
+3. Detalhes Técnicos
+HTML: Estrutura básica da página com os elementos do painel, cards e modais.
+
+CSS: Utilize o framework Tailwind CSS para todos os estilos e responsividade. O design deve ser moderno e amigável.
+
+JavaScript:
+
+Gerencie toda a lógica da aplicação.
+
+Utilize o Firebase Firestore para ler, adicionar e atualizar os dados em tempo real.
+
+Inclua a lógica de autenticação básica (signInAnonymously ou signInWithCustomToken) e a distinção de papéis (housekeeper vs. manager).
+
+Manipule a renderização dinâmica dos cards de quartos na interface.
+
+Lide com a abertura e fechamento dos modais de avarias e checklists.
