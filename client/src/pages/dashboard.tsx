@@ -12,12 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import type { Room, User, CleaningSession } from "@/lib/types";
 
 export default function Dashboard() {
-  const [currentUser] = useState<User>({
-    id: "1",
-    name: "Maria Silva",
-    role: "manager",
-    email: "maria@hotel.com"
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isChecklistOpen, setIsChecklistOpen] = useState(false);
@@ -30,8 +25,9 @@ export default function Dashboard() {
 
   // Fetch rooms based on user role and filter
   const { data: rooms = [], isLoading, refetch } = useQuery({
-    queryKey: ["/api/rooms", currentUser.role === "manager" ? null : currentUser.id],
+    queryKey: ["/api/rooms", currentUser?.role === "manager" ? null : currentUser?.id],
     queryFn: async () => {
+      if (!currentUser) return [];
       const params = new URLSearchParams();
       if (currentUser.role === "housekeeper") {
         params.append("assignedTo", currentUser.id);
@@ -41,6 +37,7 @@ export default function Dashboard() {
       if (!response.ok) throw new Error("Failed to fetch rooms");
       return response.json();
     },
+    enabled: !!currentUser,
   });
 
   // Fetch users for assignment
@@ -52,6 +49,16 @@ export default function Dashboard() {
       return response.json();
     },
   });
+
+  // Set current user to the first manager if not set
+  useEffect(() => {
+    if (!currentUser && users.length > 0) {
+      const manager = users.find((user: User) => user.role === "manager");
+      if (manager) {
+        setCurrentUser(manager);
+      }
+    }
+  }, [users, currentUser]);
 
   // Calculate statistics
   const stats = {
@@ -77,7 +84,7 @@ export default function Dashboard() {
     refetch();
   };
 
-  if (isLoading) {
+  if (isLoading || !currentUser) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -197,7 +204,7 @@ export default function Dashboard() {
             <Button variant="outline" data-testid="button-filters">
               <i className="fas fa-filter mr-2"></i>Filtros
             </Button>
-            {currentUser.role === "manager" && (
+            {currentUser?.role === "manager" && (
               <Button data-testid="button-new-assignment">
                 <i className="fas fa-plus mr-2"></i>Nova Atribuição
               </Button>
@@ -225,7 +232,7 @@ export default function Dashboard() {
             <i className="fas fa-bed text-4xl text-muted-foreground mb-4"></i>
             <h3 className="text-lg font-medium text-foreground mb-2">Nenhum quarto encontrado</h3>
             <p className="text-muted-foreground">
-              {currentUser.role === "housekeeper" 
+              {currentUser?.role === "housekeeper" 
                 ? "Você não tem quartos atribuídos no momento."
                 : "Nenhum quarto está cadastrado no sistema."
               }

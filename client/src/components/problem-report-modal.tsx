@@ -126,7 +126,7 @@ export default function ProblemReportModal({
             Reportar Problema
           </DialogTitle>
           <DialogDescription>
-            Quarto {room.number}
+            Quarto {room.number} - Descreva o problema encontrado no quarto para que a equipe de manutenção possa resolvê-lo.
           </DialogDescription>
         </DialogHeader>
         

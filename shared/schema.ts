@@ -175,6 +175,9 @@ export const insertRoomSchema = createInsertSchema(rooms).omit({
 export const insertCleaningSessionSchema = createInsertSchema(cleaningSessions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  startTime: z.string().datetime().transform((val) => new Date(val)),
+  endTime: z.string().datetime().transform((val) => new Date(val)).optional(),
 });
 
 export const insertChecklistCompletionSchema = createInsertSchema(checklistCompletions).omit({
