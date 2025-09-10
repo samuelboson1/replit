@@ -14,6 +14,9 @@ export type {
   WSMessage,
 } from "@shared/schema";
 
+// Import types for interface extensions
+import type { Room, CleaningSession, ProblemReport } from "@shared/schema";
+
 // Additional frontend-specific types
 export interface RoomWithStats extends Room {
   activeSession?: CleaningSession;
