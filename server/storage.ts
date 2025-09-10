@@ -7,6 +7,7 @@ import {
   problemReports,
   type User,
   type InsertUser,
+  type UpsertUser,
   type Room,
   type InsertRoom,
   type CleaningSession,
@@ -24,6 +25,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  upsertUser(user: UpsertUser): Promise<User>;
   getAllUsers(): Promise<User[]>;
   
   // Room operations
@@ -63,6 +65,53 @@ export class DatabaseStorage implements IStorage {
   async createUser(userData: InsertUser): Promise<User> {
     const [user] = await db.insert(users).values(userData).returning();
     return user;
+  }
+
+  async upsertUser(userData: UpsertUser): Promise<User> {
+    try {
+      const [user] = await db
+        .insert(users)
+        .values(userData)
+        .onConflictDoUpdate({
+          target: users.id,
+          set: {
+            email: userData.email,
+            firstName: userData.firstName,
+            lastName: userData.lastName,
+            profileImageUrl: userData.profileImageUrl,
+            role: userData.role,
+            updatedAt: new Date(),
+          },
+        })
+        .returning();
+      return user;
+    } catch (error: any) {
+      // Handle unique constraint violation on email
+      if (error.message?.includes('users_email_unique')) {
+        // Find existing user by email and update
+        const existingUser = await db
+          .select()
+          .from(users)
+          .where(eq(users.email, userData.email!))
+          .limit(1);
+        
+        if (existingUser.length > 0) {
+          const [updatedUser] = await db
+            .update(users)
+            .set({
+              firstName: userData.firstName,
+              lastName: userData.lastName,
+              profileImageUrl: userData.profileImageUrl,
+              role: userData.role,
+              updatedAt: new Date(),
+            })
+            .where(eq(users.email, userData.email!))
+            .returning();
+          return updatedUser;
+        }
+      }
+      throw error;
+    }
   }
 
   async getAllUsers(): Promise<User[]> {

@@ -40,25 +40,35 @@ export default function Dashboard() {
     enabled: !!currentUser,
   });
 
-  // Fetch users for assignment
+  // Fetch users for assignment (managers only)
   const { data: users = [] } = useQuery({
     queryKey: ["/api/users"],
     queryFn: async () => {
       const response = await fetch("/api/users");
-      if (!response.ok) throw new Error("Failed to fetch users");
+      if (!response.ok) {
+        if (response.status === 403) {
+          // User doesn't have permission to view users list
+          return [];
+        }
+        throw new Error("Failed to fetch users");
+      }
       return response.json();
     },
+    enabled: !!currentUser, // Only fetch when currentUser is available
   });
 
-  // Set current user to the first manager if not set
+  // Set current user from auth API
+  const { data: authUser } = useQuery({
+    queryKey: ["/api/auth/user"],
+    retry: false,
+  });
+
+  // Set current user from authenticated user
   useEffect(() => {
-    if (!currentUser && users.length > 0) {
-      const manager = users.find((user: User) => user.role === "manager");
-      if (manager) {
-        setCurrentUser(manager);
-      }
+    if (!currentUser && authUser) {
+      setCurrentUser(authUser);
     }
-  }, [users, currentUser]);
+  }, [authUser, currentUser]);
 
   // Calculate statistics
   const stats = {

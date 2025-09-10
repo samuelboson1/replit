@@ -21,11 +21,25 @@ export const userRoleEnum = pgEnum('user_role', ['manager', 'housekeeper', 'supe
 export const priorityEnum = pgEnum('priority', ['baixa', 'media', 'alta', 'urgente']);
 export const problemTypeEnum = pgEnum('problem_type', ['eletrico', 'hidraulico', 'ar_condicionado', 'moveis', 'eletronicos', 'limpeza_especial', 'outros']);
 
-// Users table
+// Session storage table (required for Replit Auth)
+export const sessions = pgTable(
+  "sessions",
+  {
+    sid: varchar("sid").primaryKey(),
+    sess: jsonb("sess").notNull(),
+    expire: timestamp("expire").notNull(),
+  },
+  (table) => [index("IDX_session_expire").on(table.expire)],
+);
+
+// Users table (updated for Replit Auth)
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  name: text("name").notNull(),
+  name: text("name"), // Made nullable for compatibility
   email: varchar("email").unique(),
+  firstName: varchar("first_name"),
+  lastName: varchar("last_name"),
+  profileImageUrl: varchar("profile_image_url"),
   role: userRoleEnum("role").notNull().default('housekeeper'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -193,6 +207,7 @@ export const insertProblemReportSchema = createInsertSchema(problemReports).omit
 // Types
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+export type UpsertUser = typeof users.$inferInsert;
 export type Room = typeof rooms.$inferSelect;
 export type InsertRoom = z.infer<typeof insertRoomSchema>;
 export type CleaningSession = typeof cleaningSessions.$inferSelect;

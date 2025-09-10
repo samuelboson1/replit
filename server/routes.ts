@@ -2,6 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { WebSocketServer, WebSocket } from "ws";
 import { storage } from "./storage";
+import { setupAuth, isAuthenticated, requireRole } from "./replitAuth";
 import { z } from "zod";
 import { insertRoomSchema, insertCleaningSessionSchema, insertChecklistCompletionSchema, insertProblemReportSchema, type WSMessage } from "@shared/schema";
 
@@ -110,16 +111,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
   await initializeChecklistTemplate();
   await initializeSampleData();
 
-  // Rooms API
-  app.get("/api/rooms", async (req, res) => {
+  // Setup authentication
+  await setupAuth(app);
+
+  // Auth routes (apply auth middleware specifically)
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const { assignedTo } = req.query;
+      console.log("🔍 /api/auth/user - req.user:", {
+        isAuthenticated: req.isAuthenticated(),
+        hasClaims: !!req.user?.claims,
+        sub: req.user?.claims?.sub,
+        email: req.user?.claims?.email
+      });
+      
+      if (!req.user?.claims?.sub) {
+        console.log("❌ No claims.sub found");
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const userId = req.user.claims.sub;
+      console.log("🔎 Looking for user with ID:", userId);
+      
+      const user = await storage.getUser(userId);
+      console.log("📊 Database query result:", user ? { id: user.id, email: user.email } : null);
+      
+      if (!user) {
+        console.log("❌ User not found in database for ID:", userId);
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // Protect all API routes with authentication
+  app.use('/api', isAuthenticated);
+
+  // Rooms API with proper RBAC
+  app.get("/api/rooms", async (req: any, res) => {
+    try {
+      const userId = req.user?.claims?.sub;
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const currentUser = await storage.getUser(userId);
+      if (!currentUser) {
+        return res.status(401).json({ message: "User not found" });
+      }
+
       let rooms;
       
-      if (assignedTo) {
-        rooms = await storage.getRoomsByAssignedUser(assignedTo as string);
+      // Managers can see all rooms, housekeepers only see assigned rooms
+      if (currentUser.role === "manager") {
+        const { assignedTo } = req.query;
+        if (assignedTo) {
+          rooms = await storage.getRoomsByAssignedUser(assignedTo as string);
+        } else {
+          rooms = await storage.getAllRooms();
+        }
       } else {
-        rooms = await storage.getAllRooms();
+        // Non-managers (housekeepers, supervisors) only see their assigned rooms
+        rooms = await storage.getRoomsByAssignedUser(userId);
       }
       
       res.json(rooms);
@@ -129,7 +185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.patch("/api/rooms/:id/status", async (req, res) => {
+  app.patch("/api/rooms/:id/status", requireRole("manager", "supervisor"), async (req, res) => {
     try {
       const { id } = req.params;
       const { status } = req.body;
@@ -300,8 +356,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Users API
-  app.get("/api/users", async (req, res) => {
+  // Users API (admin only)
+  app.get("/api/users", requireRole("manager"), async (req, res) => {
     try {
       const users = await storage.getAllUsers();
       res.json(users);
