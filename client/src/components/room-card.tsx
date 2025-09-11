@@ -24,7 +24,7 @@ const getStatusLabel = (status: string) => {
     clean: "Limpo", 
     occupied: "Ocupado Limpo",
     cleaning: "Vazio",
-    inspection: "Disponível"
+    inspection: "Disponível para o check in"
   } as const;
   return statusMap[status as keyof typeof statusMap] || status;
 };
