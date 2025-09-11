@@ -188,7 +188,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/rooms/:id/status", requireRole("manager", "supervisor"), async (req, res) => {
     try {
       const { id } = req.params;
-      const { status } = req.body;
+      
+      // Validate status against enum
+      const statusSchema = z.object({
+        status: z.enum(['dirty', 'clean', 'occupied', 'cleaning', 'inspection'])
+      });
+      
+      const { status } = statusSchema.parse(req.body);
       
       const room = await storage.updateRoomStatus(id, status);
       
@@ -201,6 +207,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(room);
     } catch (error) {
       console.error("Error updating room status:", error);
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid status value", errors: error.errors });
+      }
       res.status(500).json({ message: "Failed to update room status" });
     }
   });
