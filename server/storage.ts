@@ -45,6 +45,7 @@ export interface IStorage {
   getChecklistTemplate(name: string): Promise<ChecklistTemplate | undefined>;
   createChecklistTemplate(template: Omit<ChecklistTemplate, 'id' | 'createdAt'>): Promise<ChecklistTemplate>;
   saveChecklistCompletion(completion: InsertChecklistCompletion): Promise<ChecklistCompletion>;
+  getChecklistCompletionByRoom(roomId: string): Promise<ChecklistCompletion | undefined>;
   getChecklistCompletion(roomId: string, templateId: string): Promise<ChecklistCompletion | undefined>;
   updateChecklistCompletion(completionId: string, updates: Partial<ChecklistCompletion>): Promise<ChecklistCompletion>;
   
@@ -215,6 +216,16 @@ export class DatabaseStorage implements IStorage {
       .set(updates)
       .where(eq(checklistCompletions.id, completionId))
       .returning();
+    return completion;
+  }
+
+  async getChecklistCompletionByRoom(roomId: string): Promise<ChecklistCompletion | undefined> {
+    const [completion] = await db
+      .select()
+      .from(checklistCompletions)
+      .where(and(eq(checklistCompletions.roomId, roomId), eq(checklistCompletions.isCompleted, true)))
+      .orderBy(desc(checklistCompletions.completedAt))
+      .limit(1);
     return completion;
   }
 

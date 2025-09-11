@@ -325,6 +325,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get completed checklist for room (for approval)
+  app.get("/api/checklist-completions/room/:roomId", requireRole("manager", "supervisor"), async (req, res) => {
+    try {
+      const { roomId } = req.params;
+      const completion = await storage.getChecklistCompletionByRoom(roomId);
+      
+      if (!completion) {
+        return res.status(404).json({ message: "No completed checklist found for this room" });
+      }
+      
+      res.json(completion);
+    } catch (error) {
+      console.error("Error fetching checklist completion:", error);
+      res.status(500).json({ message: "Failed to fetch checklist completion" });
+    }
+  });
+
   // Problem reports API
   app.post("/api/problem-reports", async (req, res) => {
     try {

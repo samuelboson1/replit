@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { ApprovalModal } from "./approval-modal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -41,6 +42,7 @@ export default function RoomCard({
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [elapsedTime, setElapsedTime] = useState("00:00");
+  const [isApprovalModalOpen, setIsApprovalModalOpen] = useState(false);
 
   // Get active cleaning session
   const { data: activeSession } = useQuery({
@@ -54,7 +56,7 @@ export default function RoomCard({
   });
 
   // Calculate elapsed time for active sessions
-  useState(() => {
+  useEffect(() => {
     if (activeSession && activeSession.status === "active") {
       const interval = setInterval(() => {
         const start = new Date(activeSession.startTime);
@@ -67,7 +69,7 @@ export default function RoomCard({
 
       return () => clearInterval(interval);
     }
-  });
+  }, [activeSession]);
 
   // Start cleaning mutation
   const startCleaningMutation = useMutation({
@@ -316,6 +318,7 @@ export default function RoomCard({
           {room.status === "inspection" && currentUser.role === "manager" && (
             <Button
               className="w-full bg-orange-600 text-white hover:bg-orange-700"
+              onClick={() => setIsApprovalModalOpen(true)}
               data-testid={`button-approve-room-${room.number}`}
             >
               <i className="fas fa-clipboard-check mr-2"></i>
@@ -369,6 +372,15 @@ export default function RoomCard({
           )}
         </div>
       </CardContent>
+      
+      <ApprovalModal
+        isOpen={isApprovalModalOpen}
+        onClose={() => setIsApprovalModalOpen(false)}
+        room={room}
+        onApprovalComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["/api/rooms"] });
+        }}
+      />
     </Card>
   );
 }

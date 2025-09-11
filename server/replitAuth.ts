@@ -65,29 +65,44 @@ async function upsertUser(
       originalRole: claims["role"]
     });
     
-    // Determine role from claims or email patterns
-    let userRole = claims["role"];
-    if (!userRole) {
-      // For development/testing ONLY, assign manager role to specific emails
-      if (process.env.NODE_ENV === "development" || process.env.ALLOW_DEV_ROLE_OVERRIDE === "true") {
-        const email = claims["email"]?.toLowerCase();
-        if (email && (
-          email.includes("manager") || 
-          email.includes("admin") || 
-          email === "manager@test.com" ||
-          email === "admin@hotel.com"
-        )) {
-          userRole = "manager";
-        } else {
-          userRole = "housekeeper";
-        }
-      } else {
-        // In production, default to housekeeper unless explicitly set in OIDC claims
-        userRole = "housekeeper";
-      }
+    // Check if user already exists to preserve their role
+    let existingUser;
+    try {
+      existingUser = await storage.getUser(claims["sub"]);
+    } catch (error) {
+      // User doesn't exist, continue with role determination
     }
 
-    console.log("🎯 Role determined:", userRole, "for email:", claims["email"]);
+    let userRole;
+    if (existingUser && existingUser.role) {
+      // Preserve existing role from database
+      userRole = existingUser.role;
+      console.log("🔄 Preserving existing role:", userRole, "for user:", claims["email"]);
+    } else {
+      // New user - determine role from claims or default
+      userRole = claims["role"];
+      if (!userRole) {
+        // For development/testing ONLY, assign manager role to specific emails
+        if (process.env.NODE_ENV === "development" || process.env.ALLOW_DEV_ROLE_OVERRIDE === "true") {
+          const email = claims["email"]?.toLowerCase();
+          if (email && (
+            email.includes("manager") || 
+            email.includes("admin") || 
+            email === "manager@test.com" ||
+            email === "admin@hotel.com" ||
+            email === "sambosondigital@gmail.com"
+          )) {
+            userRole = "manager";
+          } else {
+            userRole = "housekeeper";
+          }
+        } else {
+          // In production, default to housekeeper unless explicitly set in OIDC claims
+          userRole = "housekeeper";
+        }
+      }
+      console.log("🎯 Role determined for new user:", userRole, "for email:", claims["email"]);
+    }
 
     const result = await storage.upsertUser({
       id: claims["sub"],
