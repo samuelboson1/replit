@@ -101,7 +101,13 @@ export default function NavigationHeader({ user }: NavigationHeaderProps) {
                   <i className="fas fa-cog mr-2"></i>
                   Configurações
                 </DropdownMenuItem>
-                <DropdownMenuItem data-testid="menu-logout">
+                <DropdownMenuItem 
+                  data-testid="menu-logout"
+                  onClick={() => {
+                    window.location.href = '/api/logout';
+                  }}
+                  className="cursor-pointer"
+                >
                   <i className="fas fa-sign-out-alt mr-2"></i>
                   Sair
                 </DropdownMenuItem>

@@ -66,7 +66,7 @@ export default function Dashboard() {
   // Set current user from authenticated user
   useEffect(() => {
     if (!currentUser && authUser) {
-      setCurrentUser(authUser);
+      setCurrentUser(authUser as User);
     }
   }, [authUser, currentUser]);
 
