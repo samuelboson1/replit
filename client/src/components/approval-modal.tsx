@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { CheckCircle, X } from "lucide-react";
-import { Room, User } from "@shared/schema";
+import type { Room, User } from "@shared/schema";
 
 interface ApprovalModalProps {
   isOpen: boolean;
@@ -18,16 +18,24 @@ interface ApprovalModalProps {
 
 export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: ApprovalModalProps) {
   const { toast } = useToast();
+  
+  console.log("🎯 ApprovalModal render:", { isOpen, room: room?.id, roomNumber: room?.number });
 
   // Fetch completed checklist for this room
-  const { data: checklistCompletion, isLoading: checklistLoading } = useQuery({
+  const { data: checklistCompletion, isLoading: checklistLoading, error: checklistError } = useQuery({
     queryKey: ["/api/checklist-completions/room", room.id],
     queryFn: async () => {
       const response = await fetch(`/api/checklist-completions/room/${room.id}`);
-      if (!response.ok) throw new Error("Failed to fetch checklist");
+      if (!response.ok) {
+        if (response.status === 404) {
+          return null; // No completed checklist found
+        }
+        throw new Error(`Failed to fetch checklist: ${response.status}`);
+      }
       return response.json();
     },
     enabled: isOpen,
+    retry: false,
   });
 
   // Fetch checklist template
@@ -102,12 +110,31 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
     );
   }
 
+  // Handle errors
+  if (checklistError) {
+    return (
+      <Dialog open={isOpen} onOpenChange={onClose}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Erro ao Carregar</DialogTitle>
+            <DialogDescription>
+              Erro ao carregar dados do checklist para o quarto {room.number}: {checklistError.message}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end">
+            <Button onClick={onClose}>Fechar</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   if (!checklistCompletion) {
     return (
       <Dialog open={isOpen} onOpenChange={onClose}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Erro</DialogTitle>
+            <DialogTitle>Checklist Não Encontrado</DialogTitle>
             <DialogDescription>
               Nenhum checklist finalizado encontrado para o quarto {room.number}.
             </DialogDescription>
@@ -122,8 +149,23 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
 
   const housekeeper = (users as User[]).find((u: User) => u.id === checklistCompletion.housekeeperId);
   const supervisor = (users as User[]).find((u: User) => u.id === checklistCompletion.supervisorId);
-  const totalItems = template?.items ? Object.values(template.items).flat().length : 0;
-  const completedCount = Object.values(checklistCompletion.completedItems).filter(Boolean).length;
+  
+  // Normalize data before use to prevent crashes
+  const completedItems = checklistCompletion?.completedItems ?? {};
+  const templateItems = (template?.items && typeof template.items === 'object') ? template.items : {} as Record<string, { title: string; items: any[] }>;
+  const totalItems = Object.values(templateItems).reduce((sum, stepObj) => sum + (stepObj?.items?.length || 0), 0);
+  const completedCount = Object.values(completedItems).filter(Boolean).length;
+  
+  console.log("🔍 ApprovalModal data:", { 
+    checklistCompletion: !!checklistCompletion,
+    template: !!template,
+    completedItems: Object.keys(completedItems).length,
+    templateItems: Object.keys(templateItems).length,
+    totalItems,
+    completedCount,
+    checklistError,
+    isLoading: checklistLoading || templateLoading
+  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -176,39 +218,42 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
           </div>
 
           {/* Checklist Items */}
-          {template?.items && Object.entries(template.items as Record<string, any[]>).map(([step, items]: [string, any[]]) => (
-            <div key={step} className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 flex items-center">
-                <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                {getStepName(step)}
-              </h3>
-              <div className="space-y-2">
-                {items.map((item: any, index: number) => {
-                  const itemKey = `${step}-${index}`;
-                  const isCompleted = checklistCompletion.completedItems[itemKey];
-                  return (
-                    <div key={itemKey} className="flex items-center p-3 bg-white border rounded-lg">
+          {Object.entries(templateItems).map(([stepKey, stepObj]: [string, { title: string; items: any[] }]) => {
+            const safeItems = Array.isArray(stepObj?.items) ? stepObj.items : [];
+            return (
+              <div key={stepKey} className="mb-6">
+                <h3 className="text-lg font-semibold mb-3 flex items-center">
+                  <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
+                  {stepObj?.title || getStepName(stepKey)}
+                </h3>
+                <div className="space-y-2">
+                  {safeItems.map((item: any, index: number) => {
+                    const itemKey = item?.id || `${stepKey}-${index}`;
+                    const isCompleted = !!completedItems[itemKey];
+                    return (
+                      <div key={itemKey} className="flex items-center p-3 bg-white border rounded-lg">
                       <div className="flex-shrink-0 mr-3">
                         <CheckCircle className="h-5 w-5 text-green-600" />
                       </div>
                       <div className="flex-grow">
-                        <p className="font-medium">{item.title}</p>
-                        {item.description && (
+                        <p className="font-medium">{item?.text || item?.title || 'Item'}</p>
+                        {item?.description && (
                           <p className="text-sm text-muted-foreground">{item.description}</p>
                         )}
                       </div>
                       <Badge variant="outline" className="bg-green-100 text-green-800">
                         Concluído
                       </Badge>
-                    </div>
-                  );
-                })}
+                      </div>
+                    );
+                  })}
+                </div>
+                {stepKey !== Object.keys(templateItems)[Object.keys(templateItems).length - 1] && (
+                  <Separator className="mt-4" />
+                )}
               </div>
-              {step !== Object.keys(template.items)[Object.keys(template.items).length - 1] && (
-                <Separator className="mt-4" />
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {/* Action Buttons */}

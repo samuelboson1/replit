@@ -82,16 +82,26 @@ async function upsertUser(
       // New user - determine role from claims or default
       userRole = claims["role"];
       if (!userRole) {
-        // For development/testing ONLY, assign manager role to specific emails
+        // For development/testing ONLY, assign manager role to specific patterns
         if (process.env.NODE_ENV === "development" || process.env.ALLOW_DEV_ROLE_OVERRIDE === "true") {
           const email = claims["email"]?.toLowerCase();
-          if (email && (
-            email.includes("manager") || 
-            email.includes("admin") || 
-            email === "manager@test.com" ||
-            email === "admin@hotel.com" ||
-            email === "sambosondigital@gmail.com"
-          )) {
+          const firstName = claims["first_name"]?.toLowerCase();
+          
+          // Check multiple indicators for manager role
+          if (
+            (email && (
+              email.includes("manager") || 
+              email.includes("admin") || 
+              email === "manager@test.com" ||
+              email === "admin@hotel.com" ||
+              email === "sambosondigital@gmail.com"
+            )) ||
+            (firstName && (
+              firstName.includes("manager") ||
+              firstName.includes("gerente") ||
+              firstName.includes("admin")
+            ))
+          ) {
             userRole = "manager";
           } else {
             userRole = "housekeeper";
