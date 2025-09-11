@@ -15,7 +15,7 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 // Enums
-export const roomStatusEnum = pgEnum('room_status', ['dirty', 'cleaning', 'inspection', 'clean', 'occupied']);
+export const roomStatusEnum = pgEnum('room_status', ['dirty', 'cleaning', 'inspection', 'clean', 'occupied', 'approved']);
 export const roomTypeEnum = pgEnum('room_type', ['standard', 'deluxe', 'suite']);
 export const userRoleEnum = pgEnum('user_role', ['manager', 'housekeeper', 'supervisor']);
 export const priorityEnum = pgEnum('priority', ['baixa', 'media', 'alta', 'urgente']);

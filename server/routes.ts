@@ -191,7 +191,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Validate status against enum
       const statusSchema = z.object({
-        status: z.enum(['dirty', 'clean', 'occupied', 'cleaning', 'inspection'])
+        status: z.enum(['dirty', 'clean', 'occupied', 'cleaning', 'inspection', 'approved'])
       });
       
       const { status } = statusSchema.parse(req.body);

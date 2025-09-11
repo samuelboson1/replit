@@ -30,7 +30,8 @@ const statusMap = {
   clean: "Limpo", 
   occupied: "Ocupado Limpo",
   cleaning: "Vazio",
-  inspection: "Disponível para o check in"
+  inspection: "Disponível para o check in",
+  approved: "Aprovado"
 } as const;
 
 const statusOptions = [
@@ -38,7 +39,8 @@ const statusOptions = [
   { value: "clean", label: "Limpo" },
   { value: "occupied", label: "Ocupado Limpo" },
   { value: "cleaning", label: "Vazio" },
-  { value: "inspection", label: "Disponível para o check in" }
+  { value: "inspection", label: "Disponível para o check in" },
+  { value: "approved", label: "Aprovado" }
 ];
 
 export default function RoomStatusModal({ room, children }: RoomStatusModalProps) {
