@@ -19,7 +19,6 @@ interface ApprovalModalProps {
 export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: ApprovalModalProps) {
   const { toast } = useToast();
   
-  console.log("🎯 ApprovalModal render:", { isOpen, room: room?.id, roomNumber: room?.number });
 
   // Fetch completed checklist for this room
   const { data: checklistCompletion, isLoading: checklistLoading, error: checklistError } = useQuery({
@@ -34,7 +33,7 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
       }
       return response.json();
     },
-    enabled: isOpen,
+    enabled: isOpen && !!room?.id,
     retry: false,
   });
 
@@ -46,13 +45,13 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
       if (!response.ok) throw new Error("Failed to fetch template");
       return response.json();
     },
-    enabled: isOpen && checklistCompletion,
+    enabled: isOpen && !!checklistCompletion,
   });
 
   // Fetch users for housekeeper/supervisor names
   const { data: users = [] } = useQuery({
     queryKey: ["/api/users"],
-    enabled: isOpen && checklistCompletion,
+    enabled: isOpen && !!checklistCompletion,
   });
 
   const approveRoomMutation = useMutation({
@@ -152,20 +151,10 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
   
   // Normalize data before use to prevent crashes
   const completedItems = checklistCompletion?.completedItems ?? {};
-  const templateItems = (template?.items && typeof template.items === 'object') ? template.items : {} as Record<string, { title: string; items: any[] }>;
+  const templateItems = (template?.items && typeof template.items === 'object') ? template.items as Record<string, { title: string; items: any[] }> : {};
   const totalItems = Object.values(templateItems).reduce((sum, stepObj) => sum + (stepObj?.items?.length || 0), 0);
   const completedCount = Object.values(completedItems).filter(Boolean).length;
   
-  console.log("🔍 ApprovalModal data:", { 
-    checklistCompletion: !!checklistCompletion,
-    template: !!template,
-    completedItems: Object.keys(completedItems).length,
-    templateItems: Object.keys(templateItems).length,
-    totalItems,
-    completedCount,
-    checklistError,
-    isLoading: checklistLoading || templateLoading
-  });
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -218,7 +207,7 @@ export function ApprovalModal({ isOpen, onClose, room, onApprovalComplete }: App
           </div>
 
           {/* Checklist Items */}
-          {Object.entries(templateItems).map(([stepKey, stepObj]: [string, { title: string; items: any[] }]) => {
+          {Object.entries(templateItems).map(([stepKey, stepObj]) => {
             const safeItems = Array.isArray(stepObj?.items) ? stepObj.items : [];
             return (
               <div key={stepKey} className="mb-6">
