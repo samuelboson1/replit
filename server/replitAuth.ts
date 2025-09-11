@@ -62,17 +62,40 @@ async function upsertUser(
       sub: claims["sub"], 
       email: claims["email"], 
       first_name: claims["first_name"],
-      role: claims["role"] || "housekeeper"
+      originalRole: claims["role"]
     });
     
+    // Determine role from claims or email patterns
+    let userRole = claims["role"];
+    if (!userRole) {
+      // For development/testing ONLY, assign manager role to specific emails
+      if (process.env.NODE_ENV === "development" || process.env.ALLOW_DEV_ROLE_OVERRIDE === "true") {
+        const email = claims["email"]?.toLowerCase();
+        if (email && (
+          email.includes("manager") || 
+          email.includes("admin") || 
+          email === "manager@test.com" ||
+          email === "admin@hotel.com"
+        )) {
+          userRole = "manager";
+        } else {
+          userRole = "housekeeper";
+        }
+      } else {
+        // In production, default to housekeeper unless explicitly set in OIDC claims
+        userRole = "housekeeper";
+      }
+    }
+
+    console.log("🎯 Role determined:", userRole, "for email:", claims["email"]);
+
     const result = await storage.upsertUser({
       id: claims["sub"],
       email: claims["email"],
       firstName: claims["first_name"],
       lastName: claims["last_name"],
       profileImageUrl: claims["profile_image_url"],
-      // Map role from OIDC claims or default to housekeeper
-      role: claims["role"] || "housekeeper",
+      role: userRole,
     });
     
     console.log("✅ upsertUser successful:", { id: result.id, email: result.email, role: result.role });

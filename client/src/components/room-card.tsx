@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import RoomStatusModal from "@/components/room-status-modal";
 import type { Room, User, CleaningSession } from "@/lib/types";
 
 interface RoomCardProps {
@@ -15,6 +16,18 @@ interface RoomCardProps {
   onOpenProblemReport: (room: Room) => void;
   onTimerUpdate: (session: CleaningSession | null) => void;
 }
+
+// Mapeamento dos status internos para os nomes em português
+const getStatusLabel = (status: string) => {
+  const statusMap = {
+    dirty: "Ocupado e Sujo",
+    clean: "Limpo", 
+    occupied: "Ocupado Limpo",
+    cleaning: "Vazio",
+    inspection: "Disponível"
+  } as const;
+  return statusMap[status as keyof typeof statusMap] || status;
+};
 
 export default function RoomCard({
   room,
@@ -143,20 +156,36 @@ export default function RoomCard({
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "dirty":
-        return <Badge className="bg-red-500 text-white">SUJO</Badge>;
-      case "cleaning":
-        return <Badge className="bg-yellow-500 text-white timer-running">EM LIMPEZA</Badge>;
-      case "inspection":
-        return <Badge className="bg-orange-500 text-white">INSPEÇÃO</Badge>;
-      case "clean":
-        return <Badge className="bg-green-500 text-white">LIMPO</Badge>;
-      case "occupied":
-        return <Badge className="bg-gray-500 text-white">OCUPADO</Badge>;
-      default:
-        return <Badge variant="secondary">{status}</Badge>;
+    const label = getStatusLabel(status);
+    const statusBadge = (() => {
+      switch (status) {
+        case "dirty":
+          return <Badge className="bg-red-500 text-white">{label}</Badge>;
+        case "cleaning":
+          return <Badge className="bg-yellow-500 text-white timer-running">{label}</Badge>;
+        case "inspection":
+          return <Badge className="bg-orange-500 text-white">{label}</Badge>;
+        case "clean":
+          return <Badge className="bg-green-500 text-white">{label}</Badge>;
+        case "occupied":
+          return <Badge className="bg-gray-500 text-white">{label}</Badge>;
+        default:
+          return <Badge variant="secondary">{label}</Badge>;
+      }
+    })();
+
+    // Se o usuário é manager, permite alterar status
+    if (currentUser.role === "manager") {
+      return (
+        <RoomStatusModal room={room}>
+          <button className="cursor-pointer" data-testid={`change-status-${room.id}`}>
+            {statusBadge}
+          </button>
+        </RoomStatusModal>
+      );
     }
+    
+    return statusBadge;
   };
 
   const getAssignedUserName = () => {
