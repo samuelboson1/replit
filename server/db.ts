@@ -5,11 +5,10 @@ import * as schema from "@shared/schema";
 
 neonConfig.webSocketConstructor = ws;
 
-// Use a fallback DATABASE_URL for development if not set
-const DATABASE_URL = process.env.DATABASE_URL || process.env.REPLIT_DB_URL || 'postgresql://localhost:5432/defaultdb';
+// Check for database URL in environment variables
+const DATABASE_URL = process.env.DATABASE_URL || process.env.REPLIT_DB_URL;
 
-if (!DATABASE_URL || DATABASE_URL === 'postgresql://localhost:5432/defaultdb') {
-  console.warn('Warning: Using fallback DATABASE_URL. Please provision a database in Replit.');
+if (!DATABASE_URL) {
+  console.error('Error: DATABASE_URL or REPLIT_DB_URL must be set. Please provision a database in Replit.');
+  process.exit(1);
 }
-export const pool = new Pool({ connectionString: DATABASE_URL });
-export const db = drizzle({ client: pool, schema });
